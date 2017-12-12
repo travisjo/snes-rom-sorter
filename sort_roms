@@ -1,0 +1,165 @@
+#!/usr/bin/env python3
+
+import argparse
+import logging
+import re
+
+import os
+import shutil
+from os import listdir
+from os.path import isfile, join
+
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+logger = logging.getLogger()
+logger.setLevel(20)
+
+file_path = os.path.dirname(__file__)
+unsorted_roms_folder = os.path.join(file_path, "Unsorted")
+sorted_roms_folder = os.path.join(file_path, "Sorted")
+
+# https://github.com/asfdfdfd/GoodCodes/blob/master/GoodCodes%20(U)%20%5B!%5D.txt
+matches = [
+    {
+        'regex': ".*\[p[0-9]+\].*",
+        'folder_name': "Pirate",
+        'move_file': True
+    },
+    {
+        'regex': ".*\[b.+\].*",
+        'folder_name': "Bad Dump",
+        'move_file': True
+    },
+    {
+        'regex': ".*\[o[0-9]+\].*",
+        'folder_name': "Overdump",
+        'move_file': True
+    },
+    {
+        'regex': ".*\[\!p\].*",
+        'folder_name': "Pending Dump",
+        'move_file': True
+    },
+    {
+        'regex': ".*\[\!\].*",
+        'folder_name': "Verified Good Dump",
+        'move_file': False
+    },
+    {
+        'regex': ".*\[a[0-9]+\].*",
+        'folder_name': "Alternate",
+        'move_file': False
+    },
+    {
+        'regex': ".*\[t[0-9]+\].*",
+        'folder_name': "Trained",
+        'move_file': False
+    },
+    {
+        'regex': ".*\[f[0-9]+\].*",
+        'folder_name': "Fixed",
+        'move_file': False
+    },
+    {
+        'regex': ".*\[T\-.+\].*",
+        'folder_name': "OldTranslation",
+        'move_file': False
+    },
+    {
+        'regex': ".*\[T\+.+\].*",
+        'folder_name': "NewerTranslation",
+        'move_file': False
+    },
+    {
+        'regex': ".*\[h.+\].*",
+        'folder_name': "Hack",
+        'move_file': False
+    },
+    {
+        'regex': ".*\(U\).*",
+        'folder_name': "USA",
+        'move_file': False
+    },
+    {
+        'regex': ".*\(J\).*",
+        'folder_name': "Japanese",
+        'move_file': False
+    },
+]
+
+
+def sort_roms(alphabetize=False):
+    """
+    Sort roms into buckets configured however you'd like
+    """
+    stats = {}
+    roms = [f for f in listdir(unsorted_roms_folder) if isfile(join(unsorted_roms_folder, f))]
+    total_matched = 0
+    for search in matches:
+        regex = re.compile(search['regex'])
+        folder_name = search['folder_name']
+        move_file = search['move_file']
+        stats[folder_name] = 0
+        roms = [f for f in listdir(unsorted_roms_folder) if isfile(join(unsorted_roms_folder, f))]
+        logger.warning("Trying to match for {} over {} ROMs".format(folder_name, len(roms)))
+        for rom in roms:
+            # logger.debug("Matching {}".format(rom))
+            if regex.match(rom):
+                stats[folder_name] += 1
+                total_matched += 1
+                logger.debug("{} matched {}, moving to {}".format(rom, search['regex'], folder_name))
+                source_file = os.path.join(unsorted_roms_folder, rom)
+                target_folder = os.path.join(sorted_roms_folder, folder_name)
+                if alphabetize:
+                    target_folder = os.path.join(target_folder, rom[0].upper())
+                target_file = os.path.join(target_folder, rom)
+                if not os.path.isdir(target_folder):
+                    os.mkdir(target_folder)
+                if not os.path.isfile(target_file):
+                    if move_file:
+                        os.rename(source_file, target_file)
+                    else:
+                        shutil.copyfile(source_file, target_file)
+        logger.warning("Matched {} ROMs".format(stats[folder_name]))
+    for rom in roms:
+        stats[folder_name] = 0
+        matched = False
+        for search in matches:
+            regex = re.compile(search['regex'])
+            if regex.match(rom):
+                matched = True
+                break
+        if not matched:
+            print("{} didn't match any search".format(rom))
+    stats['Total'] = len(roms)
+    stats['Total Matched'] = total_matched
+    return stats
+
+
+def unsort_roms():
+    """
+    Move roms back into unsorted
+    """
+    print('Unsorting ROMs')
+    for search in matches:
+        folder_name = search['folder_name']
+        source_folder = os.path.join(sorted_roms_folder, folder_name)
+        if os.path.isdir(source_folder):
+            roms = [f for f in listdir(source_folder) if isfile(join(source_folder, f))]
+            logger.info('Moving {} ROMs from {} back into Unsorted folder.'.format(len(roms), folder_name))
+            for rom in roms:
+                source_file = os.path.join(source_folder, rom)
+                target_file = os.path.join(unsorted_roms_folder, rom)
+                logger.debug("{} -> {}".format(source_file, target_file))
+                os.rename(source_file, target_file)
+
+
+def main(*args, **kwargs):
+    unsort_roms()
+    results = sort_roms()
+    print("Statistics ------")
+    for k, v in results.items():
+        print("{}: {}".format(k, v))
+
+
+if __name__ == "__main__":
+    main(*[], **{})
