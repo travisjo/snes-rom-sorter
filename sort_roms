@@ -9,9 +9,8 @@ import shutil
 from os import listdir
 from os.path import isdir, isfile, join
 
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
 logger = logging.getLogger()
-logger.setLevel(20)
 
 file_path = os.path.dirname(__file__)
 unsorted_roms_folder = os.path.join(file_path, "Unsorted")
@@ -20,7 +19,7 @@ sorted_roms_folder = os.path.join(file_path, "Sorted")
 everything_else_category = {
     'regex': ".*",
     'folder_name': "Everything Else",
-    'move_file': True,
+    'move_file': False,  # If you change this to True it'll move your .gitignore
 }
 
 # https://github.com/asfdfdfd/GoodCodes/blob/master/GoodCodes%20(U)%20%5B!%5D.txt
@@ -258,11 +257,10 @@ def sort_roms(sort_regions=True):
     """
     stats = {}
     total_matched = 0
-    # Initialize stats dict. This can't be done below because of the sorting mechanism we're using.
-    for category in categories:
-        stats[category['folder_name']] = 0
-    stats[everything_else_category['folder_name']] = 0
     unmatched = 0
+    # Initialize stats dict. This can't be done below because of the sorting mechanism we're using.
+    for category in (categories + [everything_else_category]):
+        stats[category['folder_name']] = 0
 
     for category in categories:
         logger.info("Searching for category {}".format(category))
@@ -318,7 +316,7 @@ def unsort_roms():
     """
     print('Unsorting ROMs')
     unsort_count = 0
-    for search in categories:
+    for search in (categories + [everything_else_category]):
         folder_name = search['folder_name']
         unsort_count += unsort_folder(sorted_roms_folder, folder_name)
     logger.info("Unsorted {} files".format(unsort_count))
